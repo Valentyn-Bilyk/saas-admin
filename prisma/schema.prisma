@@ -1,0 +1,85 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  image     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  memberships Membership[]
+  ownedTeams  Team[]       @relation("OwnerTeams")
+  auditLogs   AuditLog[]   @relation("UserAuditLogs")
+}
+
+model Team {
+  id            String         @id @default(cuid())
+  name          String
+  slug          String         @unique
+  ownerId       String
+  owner         User           @relation("OwnerTeams", fields: [ownerId], references: [id])
+  memberships   Membership[]
+  subscriptions Subscription[]
+  auditLogs     AuditLog[]     @relation("TeamAuditLogs")
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+}
+
+model Membership {
+  id        String   @id @default(cuid())
+  userId    String
+  teamId    String
+  role      Role     @default(MEMBER)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+  team Team @relation(fields: [teamId], references: [id])
+
+  @@unique([userId, teamId])
+}
+
+enum Role {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+model Subscription {
+  id                String             @id @default(cuid())
+  teamId            String
+  status            SubscriptionStatus
+  priceId           String?
+  currentPeriodEnd  DateTime?
+  cancelAtPeriodEnd Boolean            @default(false)
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  team Team @relation(fields: [teamId], references: [id])
+}
+
+enum SubscriptionStatus {
+  INCOMPLETE
+  ACTIVE
+  PAST_DUE
+  CANCELED
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  teamId    String
+  actorId   String?
+  action    String
+  meta      Json?
+  createdAt DateTime @default(now())
+
+  team  Team  @relation("TeamAuditLogs", fields: [teamId], references: [id])
+  actor User? @relation("UserAuditLogs", fields: [actorId], references: [id])
+}
