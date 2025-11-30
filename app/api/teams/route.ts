@@ -2,8 +2,6 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 
-type TxClient = Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
-
 const createTeamSchema = z.object({
   name: z.string().min(2),
 });
@@ -76,8 +74,8 @@ export async function POST(req: Request) {
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '');
   const slug = await generateUniqueSlug(baseSlug);
-
-  const team = await prisma.$transaction(async (tx: TxClient) => {
+  //eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const team = await prisma.$transaction(async (tx: any) => {
     const t = await tx.team.create({
       data: {
         name,
@@ -85,6 +83,7 @@ export async function POST(req: Request) {
         ownerId: user.id,
       },
     });
+
     await tx.membership.create({
       data: {
         userId: user.id,
