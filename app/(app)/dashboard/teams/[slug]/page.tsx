@@ -1,26 +1,23 @@
 import { notFound } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import type { Membership, User, AuditLog, Team } from '@prisma/client';
-
+import type { Prisma } from '@prisma/client';
 type Props = {
   params: Promise<{
     slug: string;
   }>;
 };
 
-type MembershipWithUser = Membership & {
-  user: User | null;
-};
-
-type AuditLogWithActor = AuditLog & {
-  actor: User | null;
-};
-
-type TeamWithRelations = Team & {
-  memberships: MembershipWithUser[];
-  auditLogs: AuditLogWithActor[];
-};
+type TeamWithRelations = Prisma.TeamGetPayload<{
+  include: {
+    memberships: {
+      include: { user: true };
+    };
+    auditLogs: {
+      include: { actor: true };
+    };
+  };
+}>;
 
 export default async function TeamDetailsPage({ params }: Props) {
   const { slug } = await params;
@@ -29,29 +26,26 @@ export default async function TeamDetailsPage({ params }: Props) {
     return notFound();
   }
 
-  const rawTeam = await prisma.team.findUnique({
+  const team = await prisma.team.findUnique({
     where: { slug },
     include: {
       memberships: {
-        include: {
-          user: true,
-        },
+        include: { user: true },
       },
       auditLogs: {
-        include: {
-          actor: true,
-        },
+        include: { actor: true },
         orderBy: { createdAt: 'desc' },
         take: 20,
       },
     },
   });
 
-  if (!rawTeam) {
+  if (!team) {
     return notFound();
   }
-  const team = rawTeam as TeamWithRelations;
-  const membersCount = team.memberships.length;
+
+  const typedTeam = team as TeamWithRelations;
+  const membersCount = typedTeam.memberships.length;
 
   return (
     <div className="space-y-6">
