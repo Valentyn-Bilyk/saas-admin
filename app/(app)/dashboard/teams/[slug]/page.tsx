@@ -1,11 +1,25 @@
 import { notFound } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import type { Membership, User, AuditLog, Team } from '@prisma/client';
 
 type Props = {
   params: Promise<{
     slug: string;
   }>;
+};
+
+type MembershipWithUser = Membership & {
+  user: User | null;
+};
+
+type AuditLogWithActor = AuditLog & {
+  actor: User | null;
+};
+
+type TeamWithRelations = Team & {
+  memberships: MembershipWithUser[];
+  auditLogs: AuditLogWithActor[];
 };
 
 export default async function TeamDetailsPage({ params }: Props) {
@@ -15,7 +29,7 @@ export default async function TeamDetailsPage({ params }: Props) {
     return notFound();
   }
 
-  const team = await prisma.team.findUnique({
+  const rawTeam = await prisma.team.findUnique({
     where: { slug },
     include: {
       memberships: {
@@ -33,10 +47,10 @@ export default async function TeamDetailsPage({ params }: Props) {
     },
   });
 
-  if (!team) {
+  if (!rawTeam) {
     return notFound();
   }
-
+  const team = rawTeam as TeamWithRelations;
   const membersCount = team.memberships.length;
 
   return (
