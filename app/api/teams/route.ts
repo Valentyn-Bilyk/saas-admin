@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 
+type TxClient = Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
+
 const createTeamSchema = z.object({
   name: z.string().min(2),
 });
@@ -75,7 +77,7 @@ export async function POST(req: Request) {
     .replace(/^-|-$/g, '');
   const slug = await generateUniqueSlug(baseSlug);
 
-  const team = await prisma.$transaction(async (tx) => {
+  const team = await prisma.$transaction(async (tx: TxClient) => {
     const t = await tx.team.create({
       data: {
         name,
